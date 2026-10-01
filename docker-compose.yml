@@ -6,6 +6,22 @@
 # https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 #
 # The compose file on main may not be compatible with the latest release.
+#
+# ------------------------------------------------------------------
+# Resource budget Immich di Mac Mini 2014: TOTAL MAKS 2 CPU & 4GB RAM
+#
+#   service            cpu     ram
+#   immich-server      0.75    1536M
+#   machine-learning   0.50    1536M   (opsional, profile "ml")
+#   database           0.50     768M
+#   redis              0.125    128M
+#   tunnel             0.125     96M
+#   -----------------------------------
+#   total              2.00    4064M
+#
+# Tanpa ML : docker compose up -d                -> 1.5 CPU / ~2.5GB
+# Dengan ML: docker compose --profile ml up -d   -> 2.0 CPU / ~4GB
+# ------------------------------------------------------------------
 
 name: immich
 
@@ -30,11 +46,18 @@ services:
     restart: always
     healthcheck:
       disable: false
+    cpu_shares: 512
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1536M
     networks:
       - immich_network
 
   immich-machine-learning:
     container_name: immich_machine_learning
+    profiles: ["ml"]   # tidak jalan kecuali pakai --profile ml
     # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
     # Example tag: ${IMMICH_VERSION:-release}-cuda
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
@@ -45,9 +68,21 @@ services:
       - ./model-cache:/cache
     env_file:
       - .env
+    environment:
+      MACHINE_LEARNING_WORKERS: 1
+      MACHINE_LEARNING_REQUEST_THREADS: 1
+      MACHINE_LEARNING_MODEL_INTRA_OP_THREADS: 1
+      MACHINE_LEARNING_MODEL_INTER_OP_THREADS: 1
+      MACHINE_LEARNING_MODEL_TTL: 300   # unload model setelah 5 menit idle
     restart: always
     healthcheck:
       disable: false
+    cpu_shares: 512
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1536M
     networks:
       - immich_network
 
@@ -57,6 +92,11 @@ services:
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.125'
+          memory: 128M
     networks:
       - immich_network
 
@@ -77,20 +117,42 @@ services:
     restart: always
     healthcheck:
       disable: false
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 768M
     networks:
       - immich_network
 
+  ## tunnel
   tunnel:
     container_name: cloudflared_tunnel
     image: cloudflare/cloudflared:latest
     restart: always
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate --protocol http2 --url http://immich-server:2283
+    #command: tunnel --no-autoupdate --protocol http2 --url http://immich-server:2283
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - immich-server
+    deploy:
+      resources:
+        limits:
+          cpus: '0.125'
+          memory: 96M
     networks:
       - immich_network
+
+  # ngrok public URL for webhook testing
+  #ngrok:
+  #  image: ngrok/ngrok:latest
+  #  restart: unless-stopped
+  #  environment:
+  #    NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+  #  command: http immich-server:2283 --domain ${NGROK_DOMAIN:-}
+  #  depends_on:
+  #    - immich-server
+  #  networks:
+  #    - immich_network
 
 networks:
   immich_network:

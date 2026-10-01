@@ -1,3 +1,6 @@
 postgres
 library
+model-cachecredentials.txt
 model-cache
+credentials.txt
+unused
