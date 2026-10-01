@@ -1,8 +1,12 @@
-postgres
+# Data runtime (foto, database, cache model ML)
 library
-model-cachecredentials.txt
+postgres
 model-cache
-credentials.txt
-unused
 
+# Rahasia — jangan pernah di-commit
 .env
+credentials.txt
+
+# Lain-lain
+unused
+.DS_Store
