@@ -22,7 +22,7 @@ Setup [Immich](https://immich.app) (pengganti Google Photos yang di-host sendiri
 ### 1. Clone repo
 
 ```bash
-git clone <url-repo> immich
+git clone https://github.com/yudapc/immich.git immich
 cd immich
 ```
 
