@@ -4,3 +4,5 @@ model-cachecredentials.txt
 model-cache
 credentials.txt
 unused
+
+.env
